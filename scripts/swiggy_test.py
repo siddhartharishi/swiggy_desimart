@@ -1,113 +1,43 @@
 import asyncio
 
-from app.services.swiggy.client import get_addresses, search_products
-from app.services.swiggy.matching import rank_product_variations
 from app.models.grocery import GroceryItem
+from app.services.swiggy.address import select_address
+from app.services.swiggy.grocery_flow import find_matches
+from app.services.swiggy.selection import select_product
+
 
 async def main():
-    # 1. Get the user's saved addresses
-    print("Fetching Swiggy addresses...\n")
-
-    address_result = await get_addresses()
-
-    print("Available addresses:\n")
-
-    for index, address in enumerate(
-        address_result.addresses,
-        start=1,
-    ):
-        print(
-            f"{index}. "
-            f"{address.address_tag or 'Address'}"
-        )
-        print(f"   {address.address_line}")
-        print()
-
-    # 2. Choose an address
-    choice = int(
-        input("Choose an address number: ")
-    )
-
-    selected_address = address_result.addresses[
-        choice - 1
-    ]
-
-    print(
-        f"\nUsing address: "
-        f"{selected_address.address_tag or 'Address'}"
-    )
-
-    # 3. Search for a grocery item
-    query = input(
-        "\nWhat grocery item should we search for? "
-    ).strip()
-
-    print(f"\nSearching Swiggy for '{query}'...\n")
-
-    result = await search_products(
-        address_id=selected_address.id,
-        query=query,
-    )
-
-    #matching 
     grocery_item = GroceryItem(
-        name=query,
+        name="potato",
         quantity=1,
         unit="kg",
-        original_text=query,
+        original_text="potato 1kg",
         confidence=1.0,
     )
 
-    ranked = rank_product_variations(
+    address = await select_address()
+
+    print(f"\nSearching for: {grocery_item.original_text}\n")
+
+    ranked_products = await find_matches(
         grocery_item=grocery_item,
-        products=result.products,
+        address_id=address.id,
     )
 
-    print("\nRanked candidates:\n")
+    selected_product = select_product(ranked_products)
 
-    for index, candidate in enumerate(
-        ranked[:10],
-        start=1,
-    ):
-        print(
-            f"{index}. "
-            f"{candidate.product.display_name} | "
-            f"{candidate.variation.quantity_description} | "
-            f"₹{candidate.variation.price.offer_price if candidate.variation.price else None} | "
-            f"score={candidate.score:.2f}"
-        )
+    if selected_product is None:
+        print("\nNo product selected.")
+        return
 
-    # 4. Display direct matches
-    print(
-        f"Direct matches: "
-        f"{len(result.products)}"
-    )
+    print("\nPRODUCT SELECTED")
+    print("=" * 70)
+    print(f"Product: {selected_product.product.display_name}")
+    print(f"Match: {selected_product.match}")
+    print(f"Confidence: {selected_product.confidence:.2f}")
+    print(f"Reason: {selected_product.reason}")
 
-    for product in result.products:
-        print(f"\n{product.display_name}")
-
-        if product.brand:
-            print(f"Brand: {product.brand}")
-
-        for variation in product.variations:
-            price = variation.price
-
-            offer_price = (
-                price.offer_price
-                if price
-                else None
-            )
-
-            print(
-                f"  - {variation.quantity_description}"
-                f" | ₹{offer_price}"
-            )
-
-    # 5. Display similar matches
-    print(
-        f"\nSimilar matches: "
-        f"{len(result.similar_products)}"
-    )
+    print("\nNo cart changes were made.")
 
 
 if __name__ == "__main__":

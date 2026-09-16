@@ -11,6 +11,55 @@ class RankedVariation:
     variation: ProductVariation
     score: float
 
+UNIT_TO_GRAMS = {
+    "g": 1,
+    "gram": 1,
+    "grams": 1,
+    "kg": 1000,
+    "kilogram": 1000,
+    "kilograms": 1000,
+}
+
+
+def parse_quantity(
+    quantity_text: str,
+) -> float | None:
+    """
+    Convert a quantity description such as
+    '500 g' or '1 kg' into grams.
+    """
+
+    text = normalize_text(quantity_text)
+
+    match = re.search(
+        r"(\d+(?:\.\d+)?)\s*(kg|g|kilogram|kilograms|gram|grams)",
+        text,
+    )
+
+    if not match:
+        return None
+
+    quantity = float(match.group(1))
+    unit = match.group(2)
+
+    multiplier = UNIT_TO_GRAMS[unit]
+
+    total_grams = quantity * multiplier
+
+    # Handle things like "500 g x 2"
+    multiplier_match = re.search(
+        r"x\s*(\d+(?:\.\d+)?)",
+        text,
+    )
+
+    if multiplier_match:
+        count = float(
+            multiplier_match.group(1)
+        )
+
+        total_grams *= count
+
+    return total_grams
 
 def normalize_text(text: str) -> str:
     """
@@ -150,8 +199,8 @@ def score_product(
     penalty = combo_penalty(product)
 
     score = (
-        0.6 * name_score
-        + 0.4 * quantity_score
+        0.55 * name_score
+        + 0.45 * quantity_score
         - penalty
     )
 

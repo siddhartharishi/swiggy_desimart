@@ -103,6 +103,19 @@ class ProductSearchResult(BaseModel):
         populate_by_name=True,
     )
 
+# based on llm matching
+class ProductMatch(BaseModel):
+    product_index: int
+    variation_index: int
+    match: str
+    confidence: float = Field(ge=0, le=1)
+    reason: str
+
+
+class ProductMatchingResult(BaseModel):
+    matches: list[ProductMatch]
+
+
 class Address(BaseModel):
     id: str
     address_line: str = Field(alias="addressLine")

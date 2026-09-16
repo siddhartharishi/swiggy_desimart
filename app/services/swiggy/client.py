@@ -2,10 +2,7 @@ import httpx
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
-
-from app.models.swiggy import ProductSearchResult
 from app.services.swiggy.auth import get_access_token
-
 from app.models.swiggy import AddressResult, ProductSearchResult
 
 SWIGGY_MCP_URL = "https://mcp.swiggy.com/im"
@@ -59,6 +56,54 @@ async def search_products(
                     result.structured_content
                 )
 
+async def update_cart(
+    selected_address_id: str,
+    spin_id: str,
+    quantity: int,
+):
+    access_token = await get_access_token()
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    async with httpx.AsyncClient(
+        headers=headers,
+        timeout=60.0,
+    ) as http_client:
+
+        async with streamable_http_client(
+            SWIGGY_MCP_URL,
+            http_client=http_client,
+        ) as (read_stream, write_stream):
+
+            async with ClientSession(
+                read_stream,
+                write_stream,
+            ) as session:
+
+                await session.initialize()
+
+                result = await session.call_tool(
+                    "update_cart",
+                    {
+                        "selectedAddressId": selected_address_id,
+                        "items": [
+                            {
+                                "spinId": spin_id,
+                                "quantity": quantity,
+                            }
+                        ]
+                    },
+                )
+
+                if not result.structured_content:
+                    raise RuntimeError(
+                        "Swiggy returned no structured cart result."
+                    )
+
+                return result.structured_content
+            
 async def get_addresses() -> AddressResult:
     """
     Retrieve the user's saved Swiggy delivery addresses.
@@ -100,3 +145,39 @@ async def get_addresses() -> AddressResult:
                 return AddressResult.model_validate(
                     result.structured_content
                 )
+
+async def get_cart():
+    access_token = await get_access_token()
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    async with httpx.AsyncClient(
+        headers=headers,
+        timeout=60.0,
+    ) as http_client:
+
+        async with streamable_http_client(
+            SWIGGY_MCP_URL,
+            http_client=http_client,
+        ) as (read_stream, write_stream):
+
+            async with ClientSession(
+                read_stream,
+                write_stream,
+            ) as session:
+
+                await session.initialize()
+
+                result = await session.call_tool(
+                    "get_cart",
+                    {},
+                )
+
+                if not result.structured_content:
+                    raise RuntimeError(
+                        "Swiggy returned no structured cart result."
+                    )
+
+                return result.structured_content

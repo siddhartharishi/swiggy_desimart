@@ -1,4 +1,4 @@
-#!/home/sidrishi/sidswork/grocery-agent/venv/bin/python
+#!/home/sidrishi/sidswork/swiggy_desimart/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
