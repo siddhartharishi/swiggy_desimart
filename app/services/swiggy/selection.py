@@ -12,7 +12,7 @@ def select_product(
         product
         for product in ranked_products
         if product.match in {"exact", "acceptable"}
-    ]
+    ][:3]
 
     if not selectable:
         print("\nNo suitable products found.")
